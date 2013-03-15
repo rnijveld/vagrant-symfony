@@ -60,6 +60,10 @@ class nginx-php-mongo {
     ensure => present,
   }
 
+  package { "git-core":
+    ensure => present,
+  }
+
   package { $php:
     notify => Service['php5-fpm'],
     ensure => latest,
@@ -165,6 +169,30 @@ class nginx-php-mongo {
     ensure => link,
     target => "/etc/nginx/sites-available/default",
     require => Package["nginx"],
+  }
+
+  file { "/home/vagrant/.ssh/id_rsa_git":
+    owner => vagrant,
+    group => vagrant,
+    ensure => file,
+    mode => 600,
+    source => '/vagrant/files/ssh/id_rsa'
+  }
+
+  file { "/home/vagrant/.ssh/id_rsa_git.pub":
+    owner => vagrant,
+    group => vagrant,
+    ensure => file,
+    mode => 644,
+    source => '/vagrant/files/ssh/id_rsa.pub'
+  }
+
+  file { "/home/vagrant/.ssh/config":
+    owner => vagrant,
+    group => vagrant,
+    ensure => file,
+    mode => 644,
+    source => '/vagrant/files/ssh/config'
   }
 
   service { "php5-fpm":
