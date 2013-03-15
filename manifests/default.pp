@@ -7,7 +7,26 @@ class nginx-php-mongo {
     ip           => $ipaddress,
   }
 
-  $php = ["php5-fpm", "php5-cli", "php5-dev", "php5-gd", "php5-curl", "php-pear", "php-apc", "php5-mcrypt", "php5-xdebug", "php5-sqlite"]
+  $php = [
+    "php5-fpm",
+    "php5-cli",
+    "php5-dev",
+    "php5-mysql",
+    "php5-gd",
+    "php5-curl",
+    "php-pear",
+    "php-apc",
+    "php5-mcrypt",
+    "php5-xdebug",
+    "php5-sqlite",
+    "php5-imagick",
+    "php5-memcache",
+    "php5-memcached",
+    "php5-xmlrpc",
+    "php5-xsl",
+    "php5-intl",
+    "php5-enchant"
+  ]
 
   exec { 'apt-get update':
     command => '/usr/bin/apt-get update',
@@ -52,6 +71,10 @@ class nginx-php-mongo {
     require => Package[$php],
   }
 
+  package { "curl":
+    ensure => present,
+  }
+
   exec { 'pecl install mongo':
     notify => Service["php5-fpm"],
     command => '/usr/bin/pecl install --force mongo',
@@ -73,6 +96,20 @@ class nginx-php-mongo {
     command => '/usr/bin/pear install --force pear.phpunit.de/PHPUnit',
     before => [File['/etc/php5/cli/php.ini'], File['/etc/php5/fpm/php.ini'], File['/etc/php5/fpm/php-fpm.conf'], File['/etc/php5/fpm/pool.d/www.conf']],
     unless => "/bin/ls -l /usr/bin/ | grep phpunit",
+  }
+
+  exec { 'install_composer':
+    command => '/usr/bin/curl https://getcomposer.org/installer | /usr/bin/php -- --install-dir=/usr/bin',
+    require => [Package[$php],Package['curl']],
+  }
+
+  exec { 'update_composer':
+    command => '/usr/bin/composer.phar self-update',
+    require => Exec['install_composer'],
+  }
+
+  exec { 'ls www/symfony':
+    command => "/bin/ln -f -s $symfony /home/vagrant/www"
   }
 
   file { '/etc/php5/cli/php.ini':
