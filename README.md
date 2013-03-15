@@ -9,3 +9,4 @@ This box requires git ssh files:
 - ./files/ssh/id_rsa
 - ./files/ssh/id_rsa.pub
 - ./files/ssh/config
+- ./files/ssh/known_hosts

@@ -195,6 +195,14 @@ class nginx-php-mongo {
     source => '/vagrant/files/ssh/config'
   }
 
+  file { "/home/vagrant/.ssh/known_hosts":
+    owner => vagrant,
+    group => vagrant,
+    ensure => file,
+    mode => 600,
+    source => '/vagrant/files/ssh/known_hosts'
+  }
+
   service { "php5-fpm":
     ensure => running,
     require => Package["php5-fpm"],
