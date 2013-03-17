@@ -7,9 +7,6 @@ server {
   error_log /var/log/nginx/symfony.error.log;
   access_log /var/log/nginx/symfony.access.log;
 
-  # strip app.php/ prefix if it is present
-  rewrite ^/app\.php/?(.*)$ /$1 permanent;
-
   client_max_body_size 50M;
 
   location / {
@@ -22,7 +19,7 @@ server {
   }
 
   # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-  location ~ ^/(app|app_dev)\.php(/|$) {
+  location ~ ^/(.*?)\.php(/|$) {
     fastcgi_pass unix://var/run/php5-fpm.sock;
     fastcgi_keep_conn on;
     fastcgi_split_path_info ^(.+\.php)(/.*)$;
