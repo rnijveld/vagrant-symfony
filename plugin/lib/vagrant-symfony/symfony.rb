@@ -21,13 +21,6 @@ module VagrantSymfony
       end
     end
 
-    ["shell"].each do |cmd|
-      command cmd do
-        require_relative "command/shell"
-        Command::ShellCommand
-      end
-    end
-
     action_hook(ALL_ACTIONS) do |hook|
       require_relative "action/boot"
       hook.before(Vagrant::Action::Builtin::Provision, Action::Boot)
