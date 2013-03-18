@@ -1,3 +1,4 @@
 .vagrant
 symfony.box
 files/ssh/
+VBoxGuestAdditions_*.iso

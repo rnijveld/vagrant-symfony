@@ -1,11 +1,115 @@
-class nginx-php-mongo {
+# Let's prevent having to mention the absolute path all the time
+Exec { path => ['/bin/', '/sbin/', '/usr/bin', '/usr/sbin/', '/usr/local/bin/'] }
 
-  host {'self':
-    ensure       => present,
-    name         => $fqdn,
-    host_aliases => ['puppet', $hostname],
-    ip           => $ipaddress,
+define line($file, $line, $ensure = 'present') {
+  case $ensure {
+    default: { err("Uknown ensure value ${ensure}") }
+    present: {
+      exec { "add-line":
+        command => "echo '${line}' >> '${file}'",
+        unless => "grep -qFx '${line}' '${file}'"
+      }
+    }
+    absent: {
+      exec { "remove-line":
+        command => "grep -vFx '${line}' '${file}' | tee '${file}' > /dev/null 2>&1",
+        onlyif => "grep -qFx '${line}' '${file}'"
+      }
+    }
+    comment: {
+      exec { "comment-line":
+        command => "sed -i -e'/${line}/s/#\\+//' '${file}'",
+        onlyif => "grep '${line}' '${file}' | grep '^#' | wc -l"
+      }
+    }
+    uncomment: {
+      exec { "uncomment-line":
+        command => "sed -i -e'/${line}/s/\\(.\\+\\)$/#\\1/' '${file}'",
+        onlyif => "test `grep '${line}' '${file}' | grep -v '^#' | wc -l` -ne 0"
+      }
+    }
   }
+}
+
+class apt {
+  exec { 'apt-get update':
+    command => 'apt-get update',
+  }
+
+  package { 'python-software-properties':
+    ensure => present,
+    require => Exec['apt-get update'],
+  }
+
+  exec { 'add-apt-repository ppa:ondrej/php5':
+    command => 'add-apt-repository ppa:ondrej/php5',
+    require => Package["python-software-properties"],
+  }
+
+  exec { 'apt-get update all':
+    command => 'apt-get update',
+    require => Exec['add-apt-repository ppa:ondrej/php5'],
+  }
+}
+
+class base-packages {
+  require apt
+
+  $packages = [
+    'git-core',
+    'curl',
+    'build-essential',
+    'wget'
+  ]
+
+  package { $packages:
+    ensure => present,
+  }
+}
+
+class vbox-guest-additions {
+  require base-packages
+  require apt
+
+  Exec['install-requirements']->Exec['retrieve']->Exec['mount']->Exec['install']->Exec['unmount']->Exec['clear']
+
+  $vboxversion = '4.2.10'
+  $url = "http://download.virtualbox.org/virtualbox/$vboxversion/VBoxGuestAdditions_$vboxversion.iso"
+
+  exec { 'install-requirements':
+    command => 'apt-get -y install linux-headers-`uname -r`',
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+
+  exec { 'retrieve':
+    command => "wget -O /tmp/VBoxGuestAdditions.iso $url",
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+
+  exec { 'mount':
+    command => "mount -o loop /tmp/VBoxGuestAdditions.iso /mnt",
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+
+  exec { 'install':
+    command => "/mnt/VBoxLinuxAdditions.run",
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+
+  exec { 'unmount':
+    command => 'umount /mnt',
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+
+  exec { 'clear':
+    command => 'rm /tmp/VBoxGuestAdditions.iso',
+    unless => "VBoxService --version | grep -F -i $vboxversion",
+  }
+}
+
+class nginx-php {
+  require base-packages
+  require apt
 
   $php = [
     "php5-fpm",
@@ -28,39 +132,7 @@ class nginx-php-mongo {
     "php5-enchant"
   ]
 
-  exec { 'apt-get update':
-    command => '/usr/bin/apt-get update',
-    before => [Package["python-software-properties"], Package["build-essential"], Package["nginx"], Package["mongodb"], Package[$php]],
-  }
-
-  package { "python-software-properties":
-    ensure => present,
-  }
-
-  exec { 'add-apt-repository ppa:ondrej/php5':
-    command => '/usr/bin/add-apt-repository ppa:ondrej/php5',
-    require => Package["python-software-properties"],
-  }
-
-  exec { 'apt-get update for latest php':
-    command => '/usr/bin/apt-get update',
-    before => Package[$php],
-    require => Exec['add-apt-repository ppa:ondrej/php5'],
-  }
-
-  package { "build-essential":
-    ensure => present,
-  }
-
   package { "nginx":
-    ensure => present,
-  }
-
-  package { "mongodb":
-    ensure => present,
-  }
-
-  package { "git-core":
     ensure => present,
   }
 
@@ -75,45 +147,33 @@ class nginx-php-mongo {
     require => Package[$php],
   }
 
-  package { "curl":
-    ensure => present,
-  }
-
-  exec { 'pecl install mongo':
-    notify => Service["php5-fpm"],
-    command => '/usr/bin/pecl install --force mongo',
-    logoutput => "on_failure",
-    require => [Package["build-essential"], Package[$php]],
-    before => [File['/etc/php5/cli/php.ini'], File['/etc/php5/fpm/php.ini'], File['/etc/php5/fpm/php-fpm.conf'], File['/etc/php5/fpm/pool.d/www.conf']],
-    unless => "/usr/bin/php -m | grep mongo",
-  }
-
   exec { 'pear config-set auto_discover 1':
-    command => '/usr/bin/pear config-set auto_discover 1',
+    command => 'pear config-set auto_discover 1',
     before => Exec['pear install pear.phpunit.de/PHPUnit'],
     require => Package[$php],
-    unless => "/bin/ls -l /usr/bin/ | grep phpunit",
+    unless => "ls -l /usr/bin/ | grep phpunit",
   }
 
   exec { 'pear install pear.phpunit.de/PHPUnit':
     notify => Service["php5-fpm"],
-    command => '/usr/bin/pear install --force pear.phpunit.de/PHPUnit',
+    command => 'pear install --force pear.phpunit.de/PHPUnit',
     before => [File['/etc/php5/cli/php.ini'], File['/etc/php5/fpm/php.ini'], File['/etc/php5/fpm/php-fpm.conf'], File['/etc/php5/fpm/pool.d/www.conf']],
-    unless => "/bin/ls -l /usr/bin/ | grep phpunit",
+    unless => "ls -l /usr/bin/ | grep phpunit",
   }
 
   exec { 'install_composer':
-    command => '/usr/bin/curl https://getcomposer.org/installer | /usr/bin/php -- --install-dir=/usr/bin',
-    require => [Package[$php],Package['curl']],
+    command => 'curl https://getcomposer.org/installer | php -- --install-dir=/usr/bin',
+    require => [Package[$php]],
   }
 
   exec { 'update_composer':
-    command => '/usr/bin/composer.phar self-update',
+    command => 'composer.phar self-update',
     require => Exec['install_composer'],
   }
 
-  exec { 'ls www/symfony':
-    command => "/bin/ln -f -s $symfony /home/vagrant/www"
+  exec { 'ln www/symfony':
+    command => "ln -f -s $symfony /home/vagrant/www",
+    unless => 'ls /home/vagrant/www',
   }
 
   file { '/etc/php5/cli/php.ini':
@@ -212,11 +272,32 @@ class nginx-php-mongo {
     ensure => running,
     require => Package["nginx"],
   }
+}
 
-  service { "mongodb":
-    ensure => running,
-    require => Package["mongodb"],
+class install-all {
+  include nginx-php
+  include vbox-guest-additions
+
+  Class['nginx-php']->Class['vbox-guest-additions']->Exec['apt-get autoremove']->Exec['apt-get clean']
+
+  exec { 'apt-get autoremove':
+    command => 'apt-get -y autoremove',
+  }
+
+  exec { 'apt-get clean':
+    command => 'apt-get -y clean',
   }
 }
 
-include nginx-php-mongo
+class after-install {
+  require install-all
+
+  line { "bashrc":
+    file => "/home/vagrant/.bashrc",
+    line => "force_color_prompt=yes",
+    ensure => 'uncomment',
+  }
+
+}
+
+include after-install

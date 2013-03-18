@@ -1,4 +1,4 @@
-require_relative 'symfony'
+require_relative 'plugin/symfony'
 
 $symfonydir = "/usr/share/nginx/www/symfony"
 
