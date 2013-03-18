@@ -20,10 +20,12 @@ module VagrantSymfony
             folder = root + '/' + folder
           end
           file = vm.config.symfony.nginxHostfile
+          entry = vm.config.symfony.entryPoint
           communicator = vm.communicate
           if communicator.ready?
             env[:ui].info "Updating web directory and reloading config..."
             vm.communicate.sudo "sed -i 's@root .*;@root #{folder};@g' #{file}"
+            vm.communicate.sudo "sed -i 's@rewrite \\(.*\\)/\\(.*\\)/$1\\(.*\\);@rewrite \\1/#{entry}/$1\\3@g' #{file}"
             vm.communicate.sudo "service nginx reload"
           end
         end

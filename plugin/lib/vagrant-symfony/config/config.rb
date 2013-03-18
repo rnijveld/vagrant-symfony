@@ -1,7 +1,7 @@
 module VagrantSymfony
   module Config
     class Config < Vagrant.plugin('2', :config)
-      attr_accessor :web, :cmd, :update_nginx, :nginx_hostfile, :root
+      attr_accessor :web, :cmd, :update_nginx, :nginx_hostfile, :root, :entry
 
       def initialize
         @web = UNSET_VALUE
@@ -9,6 +9,14 @@ module VagrantSymfony
         @update_nginx = UNSET_VALUE
         @nginx_hostfile = UNSET_VALUE
         @root = UNSET_VALUE
+        @entry = UNSET_VALUE
+      end
+
+      def entryPoint
+        return "app.php" if @entry == UNSET_VALUE
+        return @entry[1..-1] if @entry[0] == '/'
+        return @entry[2..-1] if @entry[0] == '.' && @entry[1] == '/'
+        return @entry
       end
 
       def rootFolder
