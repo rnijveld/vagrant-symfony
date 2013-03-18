@@ -9,6 +9,7 @@ Vagrant.configure("2") do |config|
   config.symfony.root = $symfonydir
   config.symfony.web = "./web"
   config.symfony.cmd = "./app/console"
+  config.symfony.entry = "app_dev.php"
   config.symfony.nginx_hostfile = "/etc/nginx/sites-enabled/default"
   config.symfony.update_nginx = true
 
