@@ -50,6 +50,11 @@ class apt {
     command => 'apt-get update',
     require => Exec['add-apt-repository ppa:ondrej/php5'],
   }
+
+  exec { 'apt-get upgrade':
+    command => 'apt-get -y upgrade',
+    require => Exec['apt-get update all'],
+  }
 }
 
 class base-packages {
@@ -59,7 +64,8 @@ class base-packages {
     'git-core',
     'curl',
     'build-essential',
-    'wget'
+    'wget',
+    'zerofree'
   ]
 
   package { $packages:
@@ -286,6 +292,16 @@ class install-all {
 
   exec { 'apt-get clean':
     command => 'apt-get -y clean',
+  }
+
+  exec { 'empty-cache':
+    command => "find /var/cache -type f -exec rm -rf {} \\;",
+    require => Exec['apt-get clean'],
+  }
+
+  exec { 'rm-vboxguest':
+    command => 'rm -rf /usr/src/vboxguest*',
+    require => Exec['apt-get clean'],
   }
 }
 

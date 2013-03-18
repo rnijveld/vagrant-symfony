@@ -1,9 +1,0 @@
-require_relative 'plugin/symfony'
-
-$symfonydir = "/usr/share/nginx/www/symfony"
-
-Vagrant::Config.run do |config|
-  config.vm.network :hostonly, "192.168.42.42"
-  config.vm.forward_port 80, 8000
-  config.vm.share_folder("symfony", $symfonydir, "./", :nfs => true)
-end
