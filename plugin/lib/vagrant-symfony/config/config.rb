@@ -1,7 +1,7 @@
 module VagrantSymfony
   module Config
     class Config < Vagrant.plugin('2', :config)
-      attr_accessor :web, :cmd, :update_nginx, :nginx_hostfile, :root, :entry
+      attr_accessor :web, :cmd, :update_nginx, :nginx_hostfile, :root, :entry, :env
 
       def initialize
         @web = UNSET_VALUE
@@ -10,6 +10,7 @@ module VagrantSymfony
         @nginx_hostfile = UNSET_VALUE
         @root = UNSET_VALUE
         @entry = UNSET_VALUE
+        @env = UNSET_VALUE
       end
 
       def entryPoint
@@ -44,6 +45,11 @@ module VagrantSymfony
       def nginxHostfile
         return "/etc/nginx/sites-enabled/default" if @nginx_hostfile == UNSET_VALUE
         return @nginx_hostfile
+      end
+
+      def environmentVariables
+        return {} unless @env.is_a?(Hash)
+        return @env
       end
     end
   end

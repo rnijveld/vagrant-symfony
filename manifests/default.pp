@@ -46,9 +46,14 @@ class apt {
     require => Package["python-software-properties"],
   }
 
+  exec { 'add-apt-repository ppa:chris-lea/node.js':
+    command => 'add-apt-repository ppa:chris-lea/node.js',
+    require => Package["python-software-properties"],
+  }
+
   exec { 'apt-get update all':
     command => 'apt-get update',
-    require => Exec['add-apt-repository ppa:ondrej/php5'],
+    require => [Exec['add-apt-repository ppa:ondrej/php5'], Exec['add-apt-repository ppa:chris-lea/node.js']],
   }
 
   exec { 'apt-get upgrade':
@@ -65,7 +70,11 @@ class base-packages {
     'curl',
     'build-essential',
     'wget',
-    'zerofree'
+    'zerofree',
+    'python',
+    'g++',
+    'make',
+    'nodejs'
   ]
 
   package { $packages:
@@ -165,6 +174,10 @@ class nginx-php {
     command => 'pear install --force pear.phpunit.de/PHPUnit',
     before => [File['/etc/php5/cli/php.ini'], File['/etc/php5/fpm/php.ini'], File['/etc/php5/fpm/php-fpm.conf'], File['/etc/php5/fpm/pool.d/www.conf']],
     unless => "ls -l /usr/bin/ | grep phpunit",
+  }
+
+  exec { 'npm install -g less':
+    command => 'npm install -g less',
   }
 
   exec { 'install_composer':
@@ -302,6 +315,14 @@ class install-all {
   exec { 'rm-vboxguest':
     command => 'rm -rf /usr/src/vboxguest*',
     require => Exec['apt-get clean'],
+  }
+
+  file { "/usr/local/bin/cleanup.sh":
+    owner => root,
+    group => root,
+    ensure => file,
+    mode => 700,
+    source => '/vagrant/files/cleanup.sh'
   }
 }
 
